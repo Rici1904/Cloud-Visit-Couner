@@ -1,0 +1,73 @@
+# .gitlab-ci.yaml
+
+# Definiert die Reihenfolge der Phasen
+stages:
+  - build
+  - push
+  - deploy
+
+# Setzt die Registry-Adresse als Variable
+# MÜSSEN SIE ANPASSEN: Ersetzen Sie 'YOUR_GITLAB_USERNAME' oder 'YOUR_REGISTRY_URL'
+variables:
+  # Beispiel für eine Registry-Adresse (GitLab-Registry)
+  IMAGE_NAME: $CI_REGISTRY_IMAGE/cloud-visit-counter-api
+  # Das Image-Tag wird aus der Git Commit ID generiert
+  IMAGE_TAG: $CI_COMMIT_SHORT_SHA 
+
+# ----------------------------------------
+# 1. BUILD PHASE (Image erstellen)
+# ----------------------------------------
+build_image:
+  stage: build
+  image: docker:20.10.16 # Image mit Docker-Engine
+  services:
+    - docker:20.10.16-dind # DIND = Docker in Docker (erlaubt Docker-Befehle im Job)
+  script:
+    - echo "Starte Docker Image Build..."
+    # Bauen des Images unter Verwendung des Dockerfiles im Wurzelverzeichnis
+    # Das fertige Image erhält den Tag der kurzen Commit-ID
+    - docker build -t $IMAGE_NAME:$IMAGE_TAG .
+    - echo "Image gebaut: $IMAGE_NAME:$IMAGE_TAG"
+
+# ----------------------------------------
+# 2. PUSH PHASE (Image in Registry hochladen)
+# ----------------------------------------
+push_image:
+  stage: push
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  # Läuft nur, wenn der Build erfolgreich war
+  needs: ["build_image"] 
+  script:
+    # Login in die Registry (Benutzername und Token müssen als CI/CD-Variablen gesetzt sein!)
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    # Pushen des Images in die Registry
+    - docker push $IMAGE_NAME:$IMAGE_TAG
+    - echo "Image erfolgreich in die Registry gepusht."
+  # Führt nur bei Änderungen im Hauptbranch aus
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# ----------------------------------------
+# 3. DEPLOY PHASE (Installation Hands-off)
+# ----------------------------------------
+deploy_to_kubernetes:
+  stage: deploy
+  # Image mit kubectl
+  image: google/cloud-sdk:latest 
+  # Führt nur bei Änderungen im Hauptbranch aus
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  # ACHTUNG: Die K8s-Konfigurationsvariablen (ServiceAccount, Cluster-Endpoint)
+  # müssen als CI/CD-Variablen in GitLab hinterlegt sein.
+  script:
+    - echo "Konfiguriere kubectl..."
+    # Hier kommt die spezifische Konfiguration für Ihren K8s-Cluster hin 
+    # (z.B. gcloud oder kubeconfig-Setup)
+
+    - echo "Starte Hands-off Deployment: Anwenden aller YAMLs..."
+    # Dieser Befehl wendet alle YAML-Dateien im Wurzelverzeichnis an:
+    # pvc-redis.yaml, redis-deployment.yaml, api-deployment.yaml
+    - kubectl apply -f .
+    - echo "Deployment abgeschlossen."

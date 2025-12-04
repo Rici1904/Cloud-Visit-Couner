@@ -1,0 +1,63 @@
+# api-deployment.yaml
+
+# --- 1. Deployment (Container-Verwaltung) ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: counter-api-deployment
+  labels:
+    app: counter-api
+spec:
+  # Konfigurieren Sie hier die Anzahl der Replicas (z.B. 2 für hohe Verfügbarkeit)
+  replicas: 2
+  selector:
+    matchLabels:
+      app: counter-api
+  template:
+    metadata:
+      labels:
+        app: counter-api
+    spec:
+      containers:
+      - name: counter-api-container
+        # Verwenden Sie das Image, das Sie lokal gebaut haben
+        image: ricardo23122002/cloud-visit-counter-api:latest
+        ports:
+        - containerPort: 5000
+        # WICHTIG: Erzwingt das Neu-Ziehen des Images (löst den ModuleNotFoundError)
+        imagePullPolicy: Always
+        env:
+        - name: REDIS_HOST
+          # WICHTIG: Setzt die Umgebungsvariable REDIS_HOST auf den Namen des K8s-Services
+          value: redis-service
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+---
+# --- 2. Service (Externe Erreichbarkeit) ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: counter-api-service
+spec:
+  # LoadBalancer macht den Service extern erreichbar
+  type: LoadBalancer
+  selector:
+    app: counter-api
+  ports:
+  - protocol: TCP
+    # Externer/Service Port
+    port: 80
+    # Interner Port des Containers (wie in app.py definiert)
+    targetPort: 5000
