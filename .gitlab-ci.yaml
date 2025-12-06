@@ -7,7 +7,6 @@ stages:
   - deploy
 
 # Setzt die Registry-Adresse als Variable
-# MÜSSEN SIE ANPASSEN: Ersetzen Sie 'YOUR_GITLAB_USERNAME' oder 'YOUR_REGISTRY_URL'
 variables:
   # Beispiel für eine Registry-Adresse (GitLab-Registry)
   IMAGE_NAME: $CI_REGISTRY_IMAGE/cloud-visit-counter-api
