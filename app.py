@@ -2,6 +2,8 @@
 from flask import Flask
 import redis
 import os
+from flask import request
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -26,15 +28,27 @@ def health_check():
     except Exception:
         # Wenn Redis nicht erreichbar ist, wird 503 zurückgegeben
         return "Service Unavailable", 503
+    
+@app.route('/reset')
+def reset():
+    try:
+        redis_conn = get_redis_connection()
+        redis_conn.set('visits', 0)
+        return"Counter ist auf 0 zurückgesetzt.", 200
+    except Exception:
+        return "Zurücksetzten fehlgeschlagen.", 503    
 
 @app.route('/')
 def counter():
     try:
         redis_conn = get_redis_connection()
-        visits = redis_conn.incr('visits') 
+        visits = redis_conn.incr('visits')
+        redis_conn.set('last_visit', datetime.utcnow().isoformat()) 
         return f'Der Cloud-Visit-Counter steht bei: {visits} Besuchen.\n', 200
     except Exception:
         return "FEHLER: Der Zählerdienst ist derzeit nicht verfügbar.", 503
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+
+    
