@@ -38,6 +38,17 @@ def reset():
     except Exception:
         return "Zurücksetzten fehlgeschlagen.", 503    
  
+@app.route('myvisit')
+def myvisit():
+    try:
+        redis_conn = get_redis_connection()
+        ip=request.remote_addr
+        key = f'visits_{ip}'
+        count = redis_conn.incr(key)
+        return f'Deine IP {ip} hat diese Seite {count} mal besucht.\n', 200
+    except Exception:
+        return "FEHLER: Der Zählerdienst ist derzeit nicht verfügbar.", 503
+    
 @app.route('/')
 def counter():
     try:
