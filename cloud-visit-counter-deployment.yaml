@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloud-visit-counter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloud-visit-counter
+  template:
+    metadata:
+      labels:
+        app: cloud-visit-counter
+    spec:
+      containers:
+      - name: cloud-visit-counter
+        image: ricardo23122002/cloud-visit-counter-api:latest   # dein lokales Docker-Image
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5000
+        env:
+        - name: REDIS_HOST
+          value: "redis-service"

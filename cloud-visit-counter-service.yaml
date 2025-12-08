@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cloud-visit-counter-service
+spec:
+  selector:
+    app: cloud-visit-counter
+  ports:
+  - port: 5000
+    targetPort: 5000
